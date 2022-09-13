@@ -9,7 +9,7 @@ attr_sphere= [
     {1: "uv-grid",4: "elevation over azimuth",5: "elevation and azimuth",6: "azimuth over elevation",7: "theta_phi grid", 9: "azimuth over elevation,edx",10: "elevation over azimuth,edx"}
     ]
 
-def readgrid(fname: str,attr_key=attr_sphere):
+def readgrid(fname: str,attr_key=attr_sphere) -> DataArray:
     f_grid = open(fname,'r')
 
     header=[]
@@ -57,7 +57,7 @@ def readgrid(fname: str,attr_key=attr_sphere):
                 matrix[x,y,2]=float(line[2])
                 matrix[x,y,3]=float(line[3])
         matrix4d = np.expand_dims(matrix, 3)
-        ds = xr.DataArray(
+        da = xr.DataArray(
             data=matrix4d,
             dims=["xcor","ycor","comp","band"],
             coords=dict(
@@ -69,15 +69,15 @@ def readgrid(fname: str,attr_key=attr_sphere):
             attrs=dict(
                 filename=fname,
                 nset=[nset,"number of field sets or beams"],
-                icomp=[icomp,attr_sphere[0][icomp]],
-                ncomp=[ncomp,attr_sphere[1][ncomp]],
-                igrid=[igrid,attr_sphere[2][igrid]],
+                icomp=[icomp,attr_key[0][icomp]],
+                ncomp=[ncomp,attr_key[1][ncomp]],
+                igrid=[igrid,attr_key[2][igrid]],
                 source_field=header[2][19:],
                 freq_name=header[3][16:],
                 freqs=freq
             ),
         )
-        list_ds.append(ds)
-    ds=xr.concat(list_ds,dim="band")
-    return ds
+        list_da.append(da)
+    da=xr.concat(list_da,dim="band")
+    return da
 # %%
