@@ -9,7 +9,7 @@ attr_sphere= [
     {1: "uv-grid",4: "elevation over azimuth",5: "elevation and azimuth",6: "azimuth over elevation",7: "theta_phi grid", 9: "azimuth over elevation,edx",10: "elevation over azimuth,edx"}
     ]
 
-def readgrid(fname: str,attr_key=attr_sphere) -> DataArray:
+def readgrid(fname: str,attr_key=attr_sphere) -> xr.DataArray:
     f_grid = open(fname,'r')
 
     header=[]
@@ -31,7 +31,7 @@ def readgrid(fname: str,attr_key=attr_sphere) -> DataArray:
     for i in range(int(nset)):
         beamc.append([float(s) for s in f_grid.readline().split()])
 
-    list_ds=[]
+    list_da=[]
     for idx,f in enumerate(freq):
         lims=f_grid.readline().split()
         xlims=[float(s) for s in lims[0:3:2]]
@@ -80,4 +80,18 @@ def readgrid(fname: str,attr_key=attr_sphere) -> DataArray:
         list_da.append(da)
     da=xr.concat(list_da,dim="band")
     return da
+
+def power(grid_array: xr.DataArray) -> [xr.DataArray, xr.DataArray]:
+    # This is a "shortcut" way of computing the power without having to convert to complex values first
+    power_grid=grid_array**2
+    power_grid=power_grid.sum(dim="comp")
+    max_dB=10*np.log10(power_grid.max())
+    return power_grid, max_dB
+
+def in_dB(grid_array: xr.DataArray) -> xr.DataArray:
+    cmplx_array=grid_array.isel(comp=0)+grid_array.isel(comp=1)*1j
+    dB_array=20*np.log10(abs(cmplx_array/cmplx_array.max()))
+    return dB_array
+
+    
 # %%
