@@ -1,0 +1,12 @@
+class gridstuff:
+    __init__
+        filename (variable)
+        self.readgridfile(filename)
+
+
+    readgridfile (function)
+    savenetcdf (function)
+
+
+class simulation_run:
+
