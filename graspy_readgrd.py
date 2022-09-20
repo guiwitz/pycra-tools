@@ -53,8 +53,7 @@ class gridfile:
             else:
                 Is=1
                 Ie=nx
-            for x in range(nx):
-                for y in range(ny):
+                for x in range(nx):
                     line=f_grid.readline().split()
                     matrix[x,y,0]=float(line[0])
                     matrix[x,y,1]=float(line[1])
@@ -71,7 +70,6 @@ class gridfile:
                     band=(["band"],[idx+1]),
                 ),
                 attrs=dict(
-                    name=fname,
                     filename=fname,
                     nset=[nset,"number of field sets or beams"],
                     icomp=[icomp,attr_key[0][icomp]],
