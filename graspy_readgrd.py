@@ -5,6 +5,7 @@ import xarray as xr
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
+from typing import List
 
 
 class gridfile:
@@ -21,16 +22,24 @@ class gridfile:
                    6: ["Azimuth (deg)", "Elevation (deg)"], 7: ["Phi (deg)", "Theta (deg)"],
                    9: ["Azimuth (deg)", "Elevation (deg)"], 10: ["Azimuth (deg)", "Elevation (deg)"]}
 
-    def __init__(self, fname: str) -> xr.DataArray:
-        if fname[-3:] == "grd":
-            self.data = self.readgrid(fname)
-        elif fname[-2:] == "nc":
-            self.data = xr.open_dataarray(fname)
-            self.data.name = self.data.filename
-        else:
-            raise Exception("File not found:" + fname)
+    def __init__(self, fnames: List[str]) -> None:
+        dat_list = []
+        for fn in fnames:
+            if fn[-3:] == "grd":
+                dat_list.append(self.readgrid(fn))
+            elif fn[-2:] == "nc":
+                dat_list.append(xr.open_dataarray(fn))
+                # self.data.name = self.data.filename this needs to be added somehow
+            else:
+                raise Exception("File not found:" + fn)
+        self.data = xr.concat(dat_list, dim="freq", combine_attrs="override")
+        for attr in ["filename", "source_field", "freq_name"]:
+            at_list = []
+            for ds in dat_list:
+                at_list.append(ds.attrs[attr])
+            self.data.attrs[attr] = at_list
 
-    def readgrid(self, fname: str, attr_key=_attr_sphere) -> xr.DataArray:
+    def readgrid(self, fname: str, attr_key: dict = _attr_sphere) -> xr.DataArray:
         f_grid = open(fname, 'r')
 
         header = []
@@ -42,8 +51,12 @@ class gridfile:
                 header.append(line)
 
         freq = []
-        for i in header[5].split():
+        for i in header[-1].split():
             freq.append(float(i))
+
+        sources = []
+        for i in header[2:-3]:
+            sources.append(i.strip()[19:])
 
         ktype = f_grid.readline()
         nset, icomp, ncomp, igrid = [int(s) for s in f_grid.readline().split()]
@@ -63,30 +76,39 @@ class gridfile:
             stpx = (xlims[1] - xlims[0]) / (nx - 1)
             stpy = (ylims[1] - ylims[0]) / (ny - 1)
 
-            matrix = np.zeros(shape=(ny, nx, 4), dtype=float)
+            matrix = np.full(shape=(ny, nx, 4), fill_value=np.nan)
 
             if klimit == 1:
-                sys.exit("In .grd file KLIMIT = 1. Code not finished for this")
+                for y in range(ny):
+                    Is, In = [int(s) for s in f_grid.readline().split()]
+                    Is -= 1
+                    for x in range(In):
+                        line = f_grid.readline().split()
+                        matrix[y, Is+x, 0] = float(line[0])
+                        matrix[y, Is+x, 1] = float(line[1])
+                        matrix[y, Is+x, 2] = float(line[2])
+                        matrix[y, Is+x, 3] = float(line[3])
+                # sys.exit("In .grd file KLIMIT = 1. Code not finished for this")
             else:
                 Is = 1
                 Ie = nx
-            for y in range(ny):
-                for x in range(nx):
-                    line = f_grid.readline().split()
-                    matrix[y, x, 0] = float(line[0])
-                    matrix[y, x, 1] = float(line[1])
-                    matrix[y, x, 2] = float(line[2])
-                    matrix[y, x, 3] = float(line[3])
+                for y in range(ny):
+                    for x in range(nx):
+                        line = f_grid.readline().split()
+                        matrix[y, x, 0] = float(line[0])
+                        matrix[y, x, 1] = float(line[1])
+                        matrix[y, x, 2] = float(line[2])
+                        matrix[y, x, 3] = float(line[3])
             matrix4d = np.expand_dims(matrix, 3)
             da = xr.DataArray(
                 data=matrix4d,
-                dims=["ycor", "xcor", "comp", "band"],
+                dims=["ycor", "xcor", "comp", "freq"],
                 name=fname,
                 coords=dict(
                     xcor=(["xcor"], np.linspace(xlims[0], xlims[1], nx)),
                     ycor=(["ycor"], np.linspace(ylims[0], ylims[1], ny)),
                     comp=(["comp"], ["E_re", "E_i", "H_re", "H_i"]),
-                    band=(["band"], [idx + 1]),
+                    freq=(["freq"], [f]),
                 ),
                 attrs=dict(
                     filename=fname,
@@ -94,36 +116,39 @@ class gridfile:
                     icomp=[icomp, attr_key[0][icomp]],
                     ncomp=[ncomp, attr_key[1][ncomp]],
                     igrid=[igrid, attr_key[2][igrid]],
-                    source_field=header[2].strip()[19:],
-                    freq_name=header[3].strip()[16:],
-                    freqs=freq
+                    source_field=sources,
+                    freq_name=header[-3].strip()[16:],
                 ),
             )
             list_da.append(da)
-        da = xr.concat(list_da, dim="band")
+        da = xr.concat(list_da, dim="freq")
         return da
 
-    def power(self, grid_array: xr.DataArray) -> xr.DataArray:
+    def power(self, grid_array: xr.DataArray = None) -> xr.DataArray:
         # This is a "shortcut" way of computing the power without having to convert to complex values first
+        if grid_array is None:
+            grid_array = self.data
         power_grid = grid_array ** 2
         power_grid = power_grid.sum(dim="comp")
         power_grid.name = "power"
         max_dB = []
-        for it in power_grid.band:
-            s = power_grid.sel(band=it).where(
-                power_grid.sel(band=it) == power_grid.sel(band=it).max(dim=["xcor", "ycor"]), drop=True).squeeze()
+        for it in power_grid.freq.values:
+            s = power_grid.sel(freq=it).where(
+                power_grid.sel(freq=it) == power_grid.sel(freq=it).max(dim=["xcor", "ycor"]), drop=True).squeeze()
             max_dB.append(10 * np.log10(s))
         xr.merge([self.data, power_grid])
         return max_dB
 
-    def co_cross(self, grid_array: xr.DataArray) -> None:
+    def co_cross(self, grid_array: xr.DataArray = None) -> None:
+        if grid_array is None:
+            grid_array = self.data
         max_v = self.power(grid_array)
         cmplx_E = grid_array.isel(comp=0) + grid_array.isel(comp=1) * 1j
         cmplx_H = grid_array.isel(comp=2) + grid_array.isel(comp=3) * 1j
         co_l = []
         for it in max_v:  # this will still break if its more than one band
             x_max_val = cmplx_E.sel(xcor=it.coords['xcor'].values, ycor=it.coords['ycor'].values,
-                                    band=it.coords['band'].values)
+                                    freq=it.coords['freq'].values)
             y_max_val = cmplx_H.sel(xcor=it.coords['xcor'].values, ycor=it.coords['ycor'].values)
             r = np.arctan2(1, np.real(y_max_val / x_max_val))
             v_co = cmplx_E * np.sin(r) + cmplx_H * np.cos(r)
@@ -149,17 +174,17 @@ class gridfile:
         con = grid_array.plot.contour(colors='k', levels=[-30, -20, -10, -6, -3, -0.1], linestyles='solid')
         ax.set_xlabel(self._axis_label[int(self.data.igrid[0])][0])
         ax.set_ylabel(self._axis_label[int(self.data.igrid[0])][1])
-        ax.set_title(str(self.data.freqs[grid_array.band.values - 1]) + "GHz")
+        ax.set_title(str(grid_array.freq.item()) + "GHz")
 
         return fig, ax, con
 
     def save(self) -> None:
-        self.data[test.data.filename].to_netcdf(self.data.filename[:-4] + '.nc')
+        self.data[self.data.filename].to_netcdf(self.data.filename[:-4] + '.nc')
 
 
 ##
 
-test = gridfile('farfield_183.grd')
+test = gridfile(["far_uv_54.grd"])
 # maxdB=test.power(test.data)
 # test.co_cross(test.data)
 # fig,ax,con=test.plotcont(test.data.co_dB.sel(band=1))
