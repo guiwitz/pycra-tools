@@ -1,4 +1,4 @@
-import graspy_readgrd as gr
+import graspy as gr
 import matplotlib.pyplot as plt
 import os
 
@@ -6,5 +6,5 @@ import os
 # test = gr.GridFile(["farfield_54.grd", "farfield_89.grd", "farfield_183.grd"])
 # print(test.data)
 # test.power()
-
-test = gr.CutFile(["cut_54.cut"])
+test = gr.GridFile(["farfield_183.grd"])
+# test = gr.CutFile(["cut_54.cut"])

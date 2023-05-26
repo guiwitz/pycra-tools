@@ -10,7 +10,7 @@ SPHERICAL_ATTRIBUTES = [
     {
         1: "linear E_theta and E_phi",
         2: "rhc and lhc",
-        3: "Ludwigs co and cx",
+        3: "Ludwig's co and cx",
         4: "major and minor axes",
         5: "xpd E_theta/E_phi and E_phi/E_theta",
         6: "xpd rhc/lhc and lhc/rhc",
@@ -26,7 +26,7 @@ SPHERICAL_ATTRIBUTES = [
         3: "three field comp",
         5: "rcs for both polarisations"
     },
-    {
+    {  # This is for grid files
         1: "uv-grid",
         4: "elevation over azimuth",
         5: "elevation and azimuth",
@@ -34,6 +34,10 @@ SPHERICAL_ATTRIBUTES = [
         7: "theta phi grid",
         9: "azimuth over elevation,edx",
         10: "elevation over azimuth,edx"
+    },
+    {  # This is for cut files
+        1: "radial C=phi V_=theta",
+        2: "circular C=theta V_=phi"
     }
 ]
 
@@ -53,9 +57,13 @@ PLANAR_OR_SURFACE_ATTRIBUTES = [
     {
         3: "three field comp",
     },
-    {
+    {  # This is for grid files
         2: "rho, theta grid",
         3: "x, y grid"
+    },
+    {  # This is for cut files
+        1: "radial C=phi V_=rho",
+        2: "circular C=rho V_=theta"
     }
 ]
 
@@ -72,23 +80,57 @@ CYLINDRICAL_ATTRIBUTES = [
     {
         3: "three field comp",
     },
-    {
+    {  # This is for grid files
         8: "Theta, z grid"
+    },
+    {  # This is for cut files
+        1: "axial C=phi V_=z",
+        2: "circular C=z V_=phi"
     }
 ]
 
-AXIS_LABELS = {
+GRID_AXIS_LABELS = {
     1: ["u", "v"],
-    2: ["Rho", "Theta"],
+    2: ["Rho [deg]", "Theta [deg]"],
     3: ["X", "Y"],
-    4: ["Azimuth (deg)", "Elevation (deg)"],
-    5: ["Azimuth (deg)", "Elevation (deg)"],
-    6: ["Azimuth (deg)", "Elevation (deg)"],
-    7: ["Phi (deg)", "Theta (deg)"],
+    4: ["Azimuth [deg]", "Elevation [deg]"],
+    5: ["Azimuth [deg]", "Elevation [deg]"],
+    6: ["Azimuth [deg]", "Elevation [deg]"],
+    7: ["Phi [deg]", "Theta [deg]"],
     8: ["Theta", "z"],
-    9: ["Azimuth (deg)", "Elevation (deg)"],
-    10: ["Azimuth (deg)", "Elevation (deg)"]
+    9: ["Azimuth [deg]", "Elevation [deg]"],
+    10: ["Azimuth [deg]", "Elevation [deg]"]
 }
+
+CUT_AXIS_LABELS = {
+    "spherical": ["Theta [deg]", "Phi [deg"],
+    "planar or surface": ["Rho [distance]", "Theta [deg"],
+    "cylindrical": ["Z [distance]", "Phi [deg]"]
+}
+
+
+def check_grid_or_cut_type(icomp: int, ncomp: int, ival: int, ftype: str) -> [dict, str]:
+    # Determining what type of cut or grid file is being processed
+    if ival in CYLINDRICAL_ATTRIBUTES[2].keys():
+        attributes = CYLINDRICAL_ATTRIBUTES
+        grid_type = "cylindrical"
+    elif ncomp == 2:
+        attributes = SPHERICAL_ATTRIBUTES
+        grid_type = "spherical"
+    elif ncomp == 3:
+        if ival in PLANAR_OR_SURFACE_ATTRIBUTES[0].keys():
+            attributes = PLANAR_OR_SURFACE_ATTRIBUTES
+            grid_type = "planar or surface"
+        elif ival in SPHERICAL_ATTRIBUTES[0].keys():
+            attributes = SPHERICAL_ATTRIBUTES
+            grid_type = "spherical"
+        else:
+            raise Exception(f"Combination of ICOMP = {icomp}, NCOMP = {ncomp}, I{ftype.upper()}\
+             values invalid/unaccounted for")
+    else:
+        raise Exception(f"Combination of ICOMP = {icomp}, NCOMP = {ncomp}, I{ftype.upper()}\
+             values invalid/unaccounted for")
+    return attributes, grid_type
 
 
 class GridFile:
@@ -132,24 +174,7 @@ class GridFile:
             ktype = file_grid.readline()
             nset, icomp, ncomp, igrid = [int(s) for s in file_grid.readline().split()]
 
-            # Determining grid type
-            if igrid in CYLINDRICAL_ATTRIBUTES[2].keys():
-                attributes = CYLINDRICAL_ATTRIBUTES
-                grid_type = "cylindrical"
-            elif ncomp == 2:
-                attributes = SPHERICAL_ATTRIBUTES
-                grid_type = "spherical"
-            elif ncomp == 3:
-                if igrid in PLANAR_OR_SURFACE_ATTRIBUTES[0].keys():
-                    attributes = PLANAR_OR_SURFACE_ATTRIBUTES
-                    grid_type = "planar or surface"
-                elif igrid in SPHERICAL_ATTRIBUTES[0].keys():
-                    attributes = SPHERICAL_ATTRIBUTES
-                    grid_type = "spherical"
-                else:
-                    raise Exception(f"Combination of ICOMP, NCOMP, IGRID values invalid/unaccounted for")
-            else:
-                raise Exception(f"Combination of ICOMP, NCOMP, IGRID values invalid/unaccounted for")
+            attributes, grid_type = check_grid_or_cut_type(icomp, ncomp, igrid, "grid")
 
             beamc = []
             for i in range(int(nset)):
@@ -166,7 +191,8 @@ class GridFile:
                 stpx = (x_limits[1] - x_limits[0]) / (nx - 1)
                 stpy = (y_limits[1] - y_limits[0]) / (ny - 1)
 
-                matrix = np.full(shape=(ny, nx, 4), fill_value=np.nan)
+                # We need to separate
+                matrix = np.full(shape=(ny, nx, 2 * ncomp), fill_value=np.nan)
 
                 if klimit == 1:
                     for y in range(ny):
@@ -174,28 +200,25 @@ class GridFile:
                         Is -= 1
                         for x in range(In):
                             line = file_grid.readline().split()
-                            matrix[y, Is + x, 0] = float(line[0])
-                            matrix[y, Is + x, 1] = float(line[1])
-                            matrix[y, Is + x, 2] = float(line[2])
-                            matrix[y, Is + x, 3] = float(line[3])
-                else:
+                            matrix[y, Is + x, :] = [float(val) for val in line[:]]
+                elif klimit == 0:
                     Is = 1
                     Ie = nx
                     for y in range(ny):
                         for x in range(nx):
                             line = file_grid.readline().split()
-                            matrix[y, x, 0] = float(line[0])
-                            matrix[y, x, 1] = float(line[1])
-                            matrix[y, x, 2] = float(line[2])
-                            matrix[y, x, 3] = float(line[3])
+                            matrix[y, x, :] = [float(val) for val in line[:]]
+                else:
+                    raise Exception(f"Unknown KLIMIT = {klimit}")
+
                 matrix4d = np.expand_dims(matrix, 3)
                 da = xr.DataArray(
                     data=matrix4d,
-                    dims=["ycor", "xcor", "comp", "freq"],
+                    dims=["y", "x", "comp", "freq"],
                     name=data_name,
                     coords=dict(
-                        xcor=(["xcor"], np.linspace(x_limits[0], x_limits[1], nx)),
-                        ycor=(["ycor"], np.linspace(y_limits[0], y_limits[1], ny)),
+                        xcor=(["x"], np.linspace(x_limits[0], x_limits[1], nx)),
+                        ycor=(["y"], np.linspace(y_limits[0], y_limits[1], ny)),
                         comp=(["comp"], ["E_re", "E_i", "H_re", "H_i"]),
                         freq=(["freq"], [frequency]),
                     ),
@@ -223,8 +246,8 @@ class GridFile:
         power_grid.name = "power"
         max_db = []
         for frequency in power_grid.freq.values:
-            s = power_grid\
-                .sel(freq=frequency)\
+            s = power_grid \
+                .sel(freq=frequency) \
                 .where(power_grid.sel(freq=frequency) == power_grid.sel(freq=frequency).max(dim=["xcor", "ycor"])
                        , drop=True).squeeze()
             max_db.append(10 * np.log10(s))
@@ -241,9 +264,9 @@ class GridFile:
             x_coordinate_values = it.coords['xcor'].values
             y_coordinate_values = it.coords['ycor'].values
             x_max_val = complex_E.sel(xcor=x_coordinate_values, ycor=y_coordinate_values,
-                                    freq=it.coords['freq'].values)
+                                      freq=it.coords['freq'].values)
             y_max_val = complex_H.sel(xcor=x_coordinate_values, ycor=y_coordinate_values,
-                                    freq=it.coords['freq'].values)
+                                      freq=it.coords['freq'].values)
             r = np.arctan2(1, np.real(y_max_val / x_max_val))
             v_co = complex_E * np.sin(r) + complex_H * np.cos(r)
             v_cross = complex_E * np.cos(r) - complex_H * np.sin(r)
@@ -266,8 +289,8 @@ class GridFile:
     def plotcont(self, grid_array: xr.DataArray) -> tuple[plt.Figure, plt.Axes, contour.ContourSet]:
         fig, ax = plt.subplots()
         con = grid_array.plot.contour(colors='k', levels=[-30, -20, -10, -6, -3, -0.1], linestyles='solid')
-        ax.set_xlabel(AXIS_LABELS[int(self.data.igrid[0])][0])
-        ax.set_ylabel(AXIS_LABELS[int(self.data.igrid[0])][1])
+        ax.set_xlabel(GRID_AXIS_LABELS[int(self.data.igrid[0])][0])
+        ax.set_ylabel(GRID_AXIS_LABELS[int(self.data.igrid[0])][1])
         ax.set_title(str(grid_array.freq.item()) + "GHz")
         return fig, ax, con
 
@@ -275,6 +298,7 @@ class GridFile:
         if file_name is None:
             file_name = self.data.name
         self.data.to_netcdf(f"{file_name}.nc")
+
 
 class CutFile:
     def __init__(self, file_names: List[str]) -> None:
@@ -309,24 +333,7 @@ class CutFile:
             line = lines[1].split()
             _, _, v_num, _, icomp, icut, ncomp = [float(s) if '.' in s else int(s) for s in line]
 
-            # Determining cut type
-            if icut in CYLINDRICAL_ATTRIBUTES[2].keys():
-                attributes = CYLINDRICAL_ATTRIBUTES
-                cut_type = "cylindrical"
-            elif ncomp == 2:
-                attributes = SPHERICAL_ATTRIBUTES
-                cut_type = "spherical"
-            elif ncomp == 3:
-                if icut in PLANAR_OR_SURFACE_ATTRIBUTES[0].keys():
-                    attributes = PLANAR_OR_SURFACE_ATTRIBUTES
-                    cut_type = "planar or surface"
-                elif icut in SPHERICAL_ATTRIBUTES[0].keys():
-                    attributes = SPHERICAL_ATTRIBUTES
-                    cut_type = "spherical"
-                else:
-                    raise Exception(f"Combination of ICOMP, NCOMP, ICUT values invalid/unaccounted for")
-            else:
-                raise Exception(f"Combination of ICOMP, NCOMP, ICUT values invalid/unaccounted for")
+            attributes, cut_type = check_grid_or_cut_type(icomp, ncomp, icut, "cut")
 
             no_of_cuts = len(lines) // (v_num + 2)
             cut_orientation = []
@@ -355,7 +362,6 @@ class CutFile:
                         matrix[cut, index, 2, frequency] = float(line[2])
                         matrix[cut, index, 3, frequency] = float(line[3])
 
-            # matrix = np.expand_dims(matrix, 3)
             da = xr.DataArray(
                 data=matrix,
                 dims=["cut_rot", "angle", "comp", "freq"],
@@ -368,8 +374,8 @@ class CutFile:
                 ),
                 attrs=dict(
                     filename=file_name,
-                    grid_type=cut_type,
-                    # nset=[nset, "number of field sets or beams"],
+                    cut_type=cut_type,
+                    n_of_f=[no_of_frequencies, "number of frequencies"],
                     icomp=[icomp, attributes[0][icomp]],
                     ncomp=[ncomp, attributes[1][ncomp]],
                     icut=[icut, attributes[2][icut]],
