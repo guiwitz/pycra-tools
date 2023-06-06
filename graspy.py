@@ -280,18 +280,15 @@ class GridFile:
         return max_db
 
     def co_cross(self, grid_array: xr.DataArray = None) -> None:  # MISSING: 3 component processing
+        # this needs a complete rewrite to account for the fact that now the components are complex instead of split into real and imag
         if grid_array is None:
             grid_array = self.data
         max_v = self.power(grid_array)
-        complex_E = grid_array.isel(comp=0) + grid_array.isel(comp=1) * 1j
+        complex_E = grid_array.sel(comp=)
         complex_H = grid_array.isel(comp=2) + grid_array.isel(comp=3) * 1j
         for it in max_v:
-            x_coordinate_values = it.coords['xcor'].values
-            y_coordinate_values = it.coords['ycor'].values
-            x_max_val = complex_E.sel(xcor=x_coordinate_values, ycor=y_coordinate_values,
-                                      freq=it.coords['freq'].values)
-            y_max_val = complex_H.sel(xcor=x_coordinate_values, ycor=y_coordinate_values,
-                                      freq=it.coords['freq'].values)
+            x_max_val = complex_E.sel(freq=it.coords['freq'].values)
+            y_max_val = complex_H.sel(freq=it.coords['freq'].values)
             r = np.arctan2(1, np.real(y_max_val / x_max_val))
             v_co = complex_E * np.sin(r) + complex_H * np.cos(r)
             v_cross = complex_E * np.cos(r) - complex_H * np.sin(r)
