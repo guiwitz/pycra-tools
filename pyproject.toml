@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 
 # https://peps.python.org/pep-0621/
 [project]
-name = "graspy"
+name = "pycra"
 description = "Package to process Ticra Tools .grd and .cut files"
 readme = "README.md"
 requires-python = ">=3.8"
