@@ -1,4 +1,4 @@
-from labels import CYLINDRICAL_ATTRIBUTES, SPHERICAL_ATTRIBUTES, PLANAR_OR_SURFACE_ATTRIBUTES
+from .labels import CYLINDRICAL_ATTRIBUTES, SPHERICAL_ATTRIBUTES, PLANAR_OR_SURFACE_ATTRIBUTES
 import matplotlib.pyplot as plt
 import matplotlib.contour as contour
 import xarray as xr
