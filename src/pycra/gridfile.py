@@ -20,7 +20,7 @@ GRID_AXIS_LABELS = {
 }
 
 
-def gridfile(file_names: List[str]) -> None:
+def gridfile(file_names: List[str], data_name: str) -> xr.DataArray:
     dat_list = []
     for file_name in file_names:
         path = Path(file_name)
@@ -30,7 +30,7 @@ def gridfile(file_names: List[str]) -> None:
         extension = path.suffix
         match extension:
             case ".grd":
-                dat_list.append(readgrd(file_name))
+                dat_list.append(readgrd(file_name, data_name))
             case ".nc":
                 dat_list.append(xr.open_dataarray(file_name))
 
@@ -137,7 +137,7 @@ def readgrd(file_name: str, data_name: str = None) -> xr.DataArray:  # MISSING: 
     return da
 
 
-def power(grid_array: xr.DataArray) -> List:
+def power(grid_array: xr.DataArray) -> xr.DataArray:
     power_grid = abs(grid_array)**2
     power_grid = power_grid.sum(dim="comp")
     power_grid.coords['comp'] = "power"
@@ -152,13 +152,16 @@ def power(grid_array: xr.DataArray) -> List:
     # Maybe should convert powergrid to dB?
     return power_grid
 
-def co_cross(grid_array: xr.DataArray) -> None:  # MISSING: 3 component processing
-    max_vals = grid_array.isel(np.abs(grid_array).argmax(dim=grid_array.dims[0:2]))
+
+def co_cross(grid_array: xr.DataArray) -> xr.DataArray:  # MISSING: 3 component processing
+    dim_x, dim_y = grid_array.dims[0:2]
+    power = np.abs(grid_array) ** 2
+    power = power.sum(dim="comp")
+    max_val = power.argmax([dim_x, dim_y])
     complex_E = grid_array.isel(comp=0)
     complex_H = grid_array.isel(comp=1)
-    dim_x, dim_y = grid_array.dims[0:2]
-    x_max_val = max_vals.isel(comp=0)
-    y_max_val = max_vals.isel(comp=1)
+    x_max_val = complex_E.isel(max_val)
+    y_max_val = complex_H.isel(max_val)
     r = np.arctan2(1, np.real(y_max_val / x_max_val))
     v_co = complex_E * np.sin(r) + complex_H * np.cos(r)
     v_cross = complex_E * np.cos(r) - complex_H * np.sin(r)
@@ -171,9 +174,9 @@ def co_cross(grid_array: xr.DataArray) -> None:  # MISSING: 3 component processi
     co_dB = 20 * np.log10(np.abs(v_co / v_co.isel(np.abs(v_co).argmax(dim=[dim_x, dim_y]))))
     cross_dB = 20 * np.log10(np.abs(v_cross / v_co.isel(np.abs(v_co).argmax(dim=[dim_x, dim_y]))))
 
-    v_co.coords['comp'] = "co_polar"
-    v_cross.coords['comp'] = "x_polar"
-    co_dB.coords['comp'] = "co_dB"
-    cross_dB.coords['comp'] = "x_dB"
-    grid_processed = xr.concat([grid_array, v_co, v_cross, co_dB, cross_dB], dim='comp')
-    return grid_processed
+    co_dB.coords['pols'] = "co_dB"
+    co_dB.name = f'{grid_array.name}_dB'
+    cross_dB.coords['pols'] = "x_dB"
+    dB_concat = xr.concat([co_dB, cross_dB], dim='pols')
+    # grid_processed = xr.merge([grid_array, dB_merge])
+    return dB_concat
