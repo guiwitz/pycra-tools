@@ -1,6 +1,6 @@
 # https://peps.python.org/pep-0517/
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 # https://peps.python.org/pep-0621/
@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 name = "pycra"
 description = "Package to process Ticra Tools .grd and .cut files"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = { text = "BSD 3-Clause License" }
 authors = [
     { email = "roland.albers@unibe.ch", name = "Roland Albers" },
@@ -17,7 +17,7 @@ dynamic = ["version"]
 dependencies = ["xarray","numpy"]
 
 [tool.hatch.version]
-path = "src/pycra/__init__.py"
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 only-include = ["src"]

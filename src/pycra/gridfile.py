@@ -21,6 +21,8 @@ GRID_AXIS_LABELS = {
 
 
 def gridfile(file_names: List[str], data_name: str) -> xr.DataArray:
+    if data_name is None:
+        data_name = file_names[0].split('.')[0]
     dat_list = []
     for file_name in file_names:
         path = Path(file_name)
@@ -180,3 +182,17 @@ def co_cross(grid_array: xr.DataArray) -> xr.DataArray:  # MISSING: 3 component 
     dB_concat = xr.concat([co_dB, cross_dB], dim='pols')
     # grid_processed = xr.merge([grid_array, dB_merge])
     return dB_concat
+
+
+def plotcont(grid_array: xr.DataArray) -> tuple[plt.Figure, plt.Axes, contour.ContourSet]:
+    fig_handles = []
+    ax_handles = []
+    con_handles = []
+    for i in grid_array.coords['freq'].values:
+        plot_grid = grid_array.sel(freq=i)
+        fig, ax = plt.subplots()
+        con = plot_grid.plot.contourf(levels=[-70, -60, -50, -40, -30, -20, -10, -6, -3, -0.001])
+        fig_handles.append(fig)
+        ax_handles.append(ax)
+        con_handles.append(con)
+    return fig, ax, con

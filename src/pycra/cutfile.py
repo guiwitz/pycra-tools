@@ -3,7 +3,7 @@ import numpy as np
 from typing import List
 from pathlib import Path
 
-from xarray import DataArray
+from xarray import DataArray, Dataset
 
 from .labels import COMP_LABELS
 from .utils import check_grid_or_cut_type
@@ -16,7 +16,9 @@ CUT_AXIS_LABELS = {
 }
 
 
-def cutfile(file_names: List[str]) -> DataArray:
+def cutfile(file_names: List[str], data_name: str) -> DataArray:
+    if data_name is None:
+        data_name = file_names[0].split('.')[0]
     dat_list = []
     for file_name in file_names:
         path = Path(file_name)
@@ -26,7 +28,7 @@ def cutfile(file_names: List[str]) -> DataArray:
         extension = path.suffix
         match extension:
             case ".cut":
-                dat_list.append(readcut(file_name))
+                dat_list.append(readcut(file_name, data_name))
             case ".nc":
                 dat_list.append(xr.open_dataarray(file_name))
 
@@ -72,14 +74,14 @@ def readcut(file_name: str, data_name: str = None) -> xr.DataArray:  # FIX ICUT 
                     for i in range(0, len(line), 2):
                         matrix[cut, index, i // 2] = complex(float(line[i]), float(line[i + 1]))
 
-        xname, yname, xunit, yunit, xlname, ylname = CUT_AXIS_LABELS[cut_type][:]
+        xname, rot_name, xunit, rot_unit, xlname, rot_lname = CUT_AXIS_LABELS[cut_type][:]
         da = xr.DataArray(
             data=matrix,
-            dims=[yname, xname, "comp", "freq"],
+            dims=[rot_name, xname, "comp", "freq"],
             name=data_name,
             coords=[
-                (xname, cut_orientation, {"units": xunit, "long_name": xlname}),
-                (yname, np.linspace(v_ini, (v_num - 1) * v_inc, v_num), {"units": yunit, "long_name": ylname}),
+                (rot_name, cut_orientation, {"units": rot_unit, "long_name": rot_lname}),
+                (xname, np.linspace(v_ini, (v_num - 1) * v_inc, v_num), {"units": xunit, "long_name": xlname}),
                 ("comp", [COMP_LABELS[icomp][0], COMP_LABELS[icomp][1]], {"long_name": "Field component"}),
                 ("freq", np.arange(0, no_of_frequencies))
             ],
@@ -94,3 +96,20 @@ def readcut(file_name: str, data_name: str = None) -> xr.DataArray:  # FIX ICUT 
             ),
         )
     return da
+
+
+def decibel(cut_array: xr.DataArray) -> Dataset:
+    db_array = 20*np.log10(np.abs(cut_array))
+    db_array.name = "db"
+    db_array.attrs["units"] = "dB"
+    db_array.attrs["long_name"] = "Directivity"
+    db_array_normalised = 20*np.log10(np.abs(cut_array)/np.abs(cut_array.sel(comp='Co')).max(cut_array.dims[1]))
+    db_array_normalised.name = "db0"
+    db_array.attrs["units"] = "dB"
+    db_array.attrs["long_name"] = "Normalised directivity"
+    db_merged = xr.merge([db_array, db_array_normalised])
+    return db_merged
+
+
+def plotcut(cut_array: xr.DataArray) -> tuple[plt.Figure, plt.Axes, contour.ContourSet]:
+    return

@@ -27,20 +27,6 @@ def check_grid_or_cut_type(icomp: int, ncomp: int, ival: int, ftype: str) -> [di
     return attributes, grid_type
 
 
-def plotcont(grid_array: xr.DataArray) -> tuple[plt.Figure, plt.Axes, contour.ContourSet]:
-    fig_handles = []
-    ax_handles = []
-    con_handles = []
-    for i in grid_array.coords['freq'].values:
-        plot_grid = grid_array.sel(freq=i)
-        fig, ax = plt.subplots()
-        con = plot_grid.plot.contourf(levels=[-70, -60, -50, -40, -30, -20, -10, -6, -3, -0.001])
-        fig_handles.append(fig)
-        ax_handles.append(ax)
-        con_handles.append(con)
-    return fig, ax, con
-
-
 def save(grid_or_cut: xr.DataArray, file_name: str = None) -> None:
     if file_name is None:
         file_name = grid_or_cut.data.name
