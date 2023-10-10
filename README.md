@@ -4,7 +4,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://python.org)
 
 Package to process Ticra Tools .grd and .cut files based on xarray. You should familiarise yourself with xarray to be 
-able to use this package effectively. 
+able to use this package effectively.
 
 ## Installation instructions
 
