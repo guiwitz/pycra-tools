@@ -16,7 +16,7 @@ CUT_AXIS_LABELS = {
 }
 
 
-def cut(file_names: List[str], data_name: str) -> DataArray:
+def cut(file_names: List[str], data_name: str = None) -> DataArray:
     if data_name is None:
         data_name = file_names[0].split('.')[0]
     dat_list = []

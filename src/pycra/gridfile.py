@@ -22,7 +22,7 @@ GRID_AXIS_LABELS = {
 }
 
 
-def grid(file_names: List[str], data_name: str) -> xr.DataArray:
+def grid(file_names: List[str], data_name: str = None) -> xr.DataArray:
     if data_name is None:
         data_name = file_names[0].split('.')[0]
     dat_list = []
