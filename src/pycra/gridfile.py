@@ -175,8 +175,8 @@ def co_cross(grid_array: xr.DataArray) -> xr.DataArray:  # MISSING: 3 component 
     pol_rot = np.abs(pol_rot) / pol_rot
     v_co = v_co * pol_rot
     v_cross = v_cross * pol_rot
-    co_dB = 20 * np.log10(np.abs(v_co / v_co.isel(np.abs(v_co).argmax(dim=[dim_x, dim_y]))))
-    cross_dB = 20 * np.log10(np.abs(v_cross / v_co.isel(np.abs(v_co).argmax(dim=[dim_x, dim_y]))))
+    co_db = 20 * np.log10(np.abs(v_co / v_co.isel(np.abs(v_co).argmax(dim=[dim_x, dim_y]))))
+    cross_db = 20 * np.log10(np.abs(v_cross / v_co.isel(np.abs(v_co).argmax(dim=[dim_x, dim_y]))))
 
     co_dB.coords['pols'] = "co_db"
     co_dB.name = f'{grid_array.name}_db'
