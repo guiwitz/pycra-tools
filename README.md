@@ -36,8 +36,9 @@ os.chdir("/path/to/your/data")
 mycut = cut(["filename.cut"])
 # Converting the complex data into dB data
 mycut = decibel(mycut)
-# Plotting the db data variable from "mycut"
-plotcut(mycut.db)
+# Plotting the db data variable from "mycut". Since the db has too many dimensions we need to slice it.
+# Here we choose only the co-polar component. 
+plotcut(mycut.db.sel(comp="Co"))
 ```
 
 For gridfiles:
@@ -50,6 +51,7 @@ os.chdir("/path/to/your/data")
 mygrid = grid(["filename.cut"])
 # Converting the complex data into dB data
 mygrid = co_cross(mygrid)
-# Plotting the db data variable from "mygrid"
-plotcont(mygrid.db)
+# Plotting the db data variable from "mygrid". Since the db has too many dimensions we need to slice it.
+# Here we choose only the co-polar component. 
+plotcont(mygrid.db.sel(comp="Co"))
 ```

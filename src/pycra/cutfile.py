@@ -81,7 +81,7 @@ def readcut(file_name: str, data_name: str = None) -> xr.DataArray:  # FIX ICUT 
             name=data_name,
             coords=[
                 (rot_name, cut_orientation, {"units": rot_unit, "long_name": rot_lname}),
-                (xname, np.linspace(v_ini, (v_num - 1) * v_inc, v_num), {"units": xunit, "long_name": xlname}),
+                (xname, np.linspace(v_ini, v_ini + (v_num - 1) * v_inc, v_num), {"units": xunit, "long_name": xlname}),
                 ("comp", [COMP_LABELS[icomp][0], COMP_LABELS[icomp][1]], {"long_name": "Field component"}),
                 ("freq", np.arange(0, no_of_frequencies))
             ],
@@ -91,7 +91,7 @@ def readcut(file_name: str, data_name: str = None) -> xr.DataArray:  # FIX ICUT 
                 n_of_f=[no_of_frequencies, "number of frequencies"],
                 icomp=[icomp, attributes[0][icomp]],
                 ncomp=[ncomp, attributes[1][ncomp]],
-                icut=[icut, attributes[2][icut]],
+                icut=[icut, attributes[3][icut]],
                 # freq_name=header[-3].strip()[16:],
             ),
         )
@@ -107,7 +107,8 @@ def decibel(cut_array: xr.DataArray) -> Dataset:
     db_array_normalised.name = "db0"
     db_array_normalised.attrs["units"] = "dB"
     db_array_normalised.attrs["long_name"] = "Normalised directivity"
-    db_merged = xr.merge([db_array, db_array_normalised])
+    db_merged = xr.merge([db_array, db_array_normalised], combine_attrs="drop_conflicts")
+    db_merged = db_merged.assign_attrs(cut_array.attrs)
     return db_merged
 
 
