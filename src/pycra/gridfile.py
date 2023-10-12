@@ -186,7 +186,7 @@ def co_cross(grid_array: xr.DataArray) -> xr.DataArray:  # MISSING: 3 component 
     return dB_concat
 
 
-def plotcont(grid_array: xr.DataArray) -> contour.ContourSet:
+def plotgrid(grid_array: xr.DataArray) -> contour.ContourSet:
     con_handles = []
     for i in grid_array.coords['freq'].values:
         plot_grid = grid_array.sel(freq=i)

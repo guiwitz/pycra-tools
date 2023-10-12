@@ -53,5 +53,5 @@ mygrid = grid(["filename.cut"])
 mygrid = co_cross(mygrid)
 # Plotting the db data variable from "mygrid". Since the db has too many dimensions we need to slice it.
 # Here we choose only the co-polar component. 
-plotcont(mygrid.db.sel(comp="Co"))
+plotgrid(mygrid.db.sel(comp="Co"))
 ```
