@@ -54,7 +54,7 @@ def grid(file_names: List[str], data_name: str = None) -> xr.DataArray:
     return grid_data
 
 
-def readgrd(file_name: str, data_name: str = None) -> xr.DataArray:  # MISSING: 3 component processing
+def readgrd(file_name: str, data_name: str = None) -> xr.DataArray:
     if data_name is None:
         data_name = file_name.split('.')[0]
     with open(file_name, 'r') as file_grid:
