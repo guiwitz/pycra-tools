@@ -119,10 +119,10 @@ def readgrd(file_name: str, data_name: str = None) -> xr.DataArray:  # MISSING: 
                 data=matrix4d,
                 dims=[yname, xname, "comp", "freq"],
                 name=data_name,
-                coords=[ #3D not yet accommodated here
+                coords=[
                     (xname, np.linspace(x_limits[0], x_limits[1], nx), {"units": xunit, "long_name": xlname}),
                     (yname, np.linspace(y_limits[0], y_limits[1], ny), {"units": yunit, "long_name": ylname}),
-                    ("comp", [COMP_LABELS[icomp][0], COMP_LABELS[icomp][1]], {"long_name": "Field component"}),
+                    ("comp", COMP_LABELS[icomp][0:ncomp], {"long_name": "Field component"}),
                     ("freq", [frequency], {"unit": "GHz"})
                 ],
                 attrs=dict(
