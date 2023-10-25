@@ -145,6 +145,7 @@ def power(grid_array: xr.DataArray) -> xr.DataArray:
     power_grid = abs(grid_array)**2
     power_grid = power_grid.sum(dim="comp")
     power_grid.coords['comp'] = "power"
+    power_grid = power_grid.assign_attrs(grid_array.attrs)
     return power_grid
 
 
