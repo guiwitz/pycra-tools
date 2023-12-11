@@ -74,10 +74,10 @@ def readcut(file_name: str, data_name: str = None) -> xr.DataArray:  # FIX ICUT 
     # Read header information of the different cuts: cut orientation
     no_of_cuts = len(lines) // (v_num + 2)
     cut_orientation = [0.] * no_of_cuts
-    for cidx in range(no_of_cuts):
-        cut_start = cidx * (v_num + 2)
+    for cut_index in range(no_of_cuts):
+        cut_start = cut_index * (v_num + 2)
         line = lines[cut_start + 1].split()
-        cut_orientation[cidx] = float(line[3])
+        cut_orientation[cut_index] = float(line[3])
 
     # The cut file format does not tell us how many frequencies there are in the file, so we need to improvise
     cut_orientation_set = set(cut_orientation)
@@ -94,7 +94,7 @@ def readcut(file_name: str, data_name: str = None) -> xr.DataArray:  # FIX ICUT 
             for ii in range(v_num):
                 line = lines[cut_start + ii + 2].split() # +2 means that first two lines are information
                 for jj in range(0, len(line), 2):
-                    data[cidx, ii, jj // 2, frequency_index] = complex(float(line[jj]), float(line[jj + 1]))
+                    data[cut_index, ii, jj // 2, frequency_index] = complex(float(line[jj]), float(line[jj + 1]))
 
     # Allocate data and labels
     da = xr.DataArray(
