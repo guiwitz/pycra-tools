@@ -55,7 +55,7 @@ def readcut(file_name: str, data_name: str = '', frequencies: List[float] = []) 
     """
 
     if not data_name:
-        data_name = file_name.split('.')[0]
+        data_name = file_name.split('.')[0] ## ev. use basename unstead of entire path
 
     with open(file_name, 'r') as file_cut:
         lines = file_cut.readlines()
