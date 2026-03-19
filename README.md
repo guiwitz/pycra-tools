@@ -21,7 +21,7 @@ pip install --upgrade pip
 ```
 3. Install the pycra package
 ```sh
-pip install git+https://git.iap.unibe.ch/albers/pycra.git
+pip install git+https://git.iap.unibe.ch/TICRA_Tools/pycra.git
 ```
 
 
