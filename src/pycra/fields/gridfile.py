@@ -172,7 +172,7 @@ def readgrid(gridfilepath: str, torfilepath: str = '', tordict: dict = {},
             print('Provide either torfilepath, tordict or userinfodict!')
         
         # read gridfile
-        gridinfodict = gridfile_h5utils.grid2dict_h5(gridfilepath)
+        griddict = gridfile_h5utils.grid2dict_h5(gridfilepath)
                 
         # combine grid- and torfile/userinfo
         infodict = gridfile_h5utils.gather_information(griddict, tordict, userinfo)        
