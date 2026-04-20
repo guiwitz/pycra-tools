@@ -142,7 +142,7 @@ def gather_information(griddict: dict, tordict: dict = {}, userinfo: dict = {}) 
         'freqs_Hz': freqs_Hz} # torfile/user (optional)
     outputinfodict = {
         'coordinate_system': coordinate_system, # icut + class_name --> e.g. spherical_cut: polar, conical -->  {'name': 'polar', 'coords': ('phi', 'theta'), 'units': ('deg', 'deg'), 'tex': ('\\phi', '\\theta')}
-        'polarisation': polarisation, # icomp + class_name --> e.g. spherical_cut: linear, total power, ...
+        'polarisation': abs(polarisation), # icomp + class_name --> e.g. spherical_cut: linear, total power, ...
         'field_region': field_region, # ncomp / torfile --> near_field / far_field
         'field_components_mathnames': field_components_mathnames, # ncomp + class_name + field_name --> e.g. spherical_cut: ['E_{co}', 'E_{cx}', 'E_r']
         'field_components_unitsystem': field_components_unitsystem, # icomp + class_name (polarisation & field_region) --> e.g. spherical
