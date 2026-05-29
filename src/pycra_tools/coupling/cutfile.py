@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .. import torfile
 
-def readcut(cutfilepath: str, torfilepath: str = '', tordict: dict = {}) -> xr.DataArray:
+def readcut_coupling(cutfilepath: str, torfilepath: str = '', tordict: dict = {}) -> xr.DataArray:
     """
     
     Example
@@ -27,8 +27,8 @@ def readcut(cutfilepath: str, torfilepath: str = '', tordict: dict = {}) -> xr.D
     tordict = torfile.tor2dict(torfilepath)
     
     # Read the field-data. The following two methods give the same result
-    da = cutfile.readcut(cutfilepath, torfilepath=torfilepath)
-    da = cutfile.readcut(cutfilepath, tordict=tordict)
+    da = cutfile.readcut_coupling(cutfilepath, torfilepath=torfilepath)
+    da = cutfile.readcut_coupling(cutfilepath, tordict=tordict)
     
     Inputs
     ------
