@@ -1,0 +1,36 @@
+# See docs at: https://mystmd.org/guide/frontmatter
+version: 1
+project:
+  id: 93021fb5-abb6-4dfb-9f6f-f94fe370a64e
+  title: pycra-tools
+  description: Package to read Ticra Tools field and coupling data stored in .cut, .grd and .h5 file formats
+  github: iap-unibe-ch/pycra-tools
+  authors: 
+    - name: Roland Albers
+    - name: Philipp J. Schmid
+  keywords: 
+    - TICRA
+    - GRASP
+    - quasioptics
+    - simulation
+    - reflector
+    - antenna
+    - data processing
+  bibliography:
+    - references.bib
+  exports:
+    - format: pdf
+      template: plain_latex_book
+      output: exports/book.pdf
+  toc:
+    - file: intro.md
+    - file: installation.md
+    - file: grasp_field_data.ipynb
+    - file: grasp_coupling_data.md
+    - file: example_fields.ipynb
+  # To autogenerate a Table of Contents, run "jupyter book init --write-toc"
+site:
+  template: book-theme
+  # options:
+  #   favicon: favicon.ico
+  #   logo: site_logo.png
