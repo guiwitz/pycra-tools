@@ -13,8 +13,8 @@ def readcut(cutfilepath: str, torfilepath: str = '', tordict: dict = {},
     Example
     -------
     
-    from pycra import torfile
-    from pycra.fields import cutfile
+    from pycra_tools import torfile
+    from pycra_tools.fields import cutfile
     
     # define directory where the data is stored
     directory = './offset_reflector/Job_01'

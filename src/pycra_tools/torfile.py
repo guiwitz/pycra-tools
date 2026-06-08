@@ -311,7 +311,7 @@ def get_real_variable(tordict, varname):
     Example usage
     -------------
     
-    from pycra import torfile
+    from pycra_tools import torfile
     testvar = torfile.get_real_variable(tordict,'testvar')
     print(eval(testvar)) # --> 0.0375
     print(testvar) # --> ((0.5)+(38.0)+(0.5))/((1040.0))

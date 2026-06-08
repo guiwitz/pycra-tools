@@ -11,8 +11,8 @@ def readcut_coupling(cutfilepath: str, torfilepath: str = '', tordict: dict = {}
     Example
     -------
     
-    from pycra import torfile
-    from pycra.coupling import cutfile
+    from pycra_tools import torfile
+    from pycra_tools.coupling import cutfile
     
     # define directory where the data is stored
     directory = './coupling_and_plate/Job_01'

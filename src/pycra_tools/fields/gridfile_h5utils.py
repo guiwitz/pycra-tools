@@ -3,7 +3,7 @@ import xarray as xr
 import numpy as np
 from pathlib import Path
 
-from pycra.fields import labels
+from . import labels
 
 def grid2dict_h5(gridfilepath: Path):
     # This is the new file format for Ticra Tools 24.1 grids

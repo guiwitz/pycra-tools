@@ -18,8 +18,8 @@ def readgrid(gridfilepath: str, torfilepath: str = '', tordict: dict = {},
     Example
     -------
     
-    from pycra import torfile
-    from pycra.fields import gridfile
+    from pycra_tools import torfile
+    from pycra_tools.fields import gridfile
     
     # define directory where the data is stored
     directory = './offset_reflector/Job_01'
@@ -188,7 +188,7 @@ def readgrid(gridfilepath: str, torfilepath: str = '', tordict: dict = {},
         
     else:
         
-        raise Exception('Gridfile extension must .grid or .h5 (given file: %s)' % gridfilepath)
+        raise Exception('Gridfile extension must .grd or .h5 (given file: %s)' % gridfilepath)
     
     return da
 
