@@ -170,16 +170,16 @@ def readcut_coupling(cutfilepath: str, torfilepath: str = '', tordict: dict = {}
     infodict['movdicts'] = [movdict for movdict in infodict['movdicts'] if movdict['number']>0]
     
     # read cutfile to dictionary
-    file_form = infodict['file_form']
+    file_format = infodict['file_format']
     nrfreqs = len(infodict['freqs_Hz'])
     nrsteps_per_movement = [movdict['number'] for movdict in infodict['movdicts']]
-    if file_form == 'cuts':
+    if file_format == 'cuts':
         cutdict = cut2dict_cuts(cutfilepath, nrfreqs, nrsteps_per_movement)
-    elif file_form == 'one_cut':
-        print('Please implement routine for file_form: %s' % file_form)
+    elif file_format == 'one_cut':
+        print('Please implement routine for file_format: %s' % file_format)
         raise
     else:
-        print('No such file_form: %s' % file_form)
+        print('No such file_format: %s' % file_format)
         raise
 
     # combine information
@@ -214,7 +214,7 @@ def gather_information(cutfilepath: dict, tordict: dict = {}) -> dict:
         amplitude_only = torinfo['amplitude_only'] if 'amplitude_only' in torinfo.keys() else 'off'
         cqlist = torinfo['list'] if 'list' in torinfo.keys() else 'off'
         file_name = torinfo['file_name'] if 'file_name' in torinfo.keys() else None
-        file_form = torinfo['file_form'] if 'file_form' in torinfo.keys() else 'cuts'
+        file_format = torinfo['file_format'] if 'file_format' in torinfo.keys() else 'cuts'
         movement_definition = re.search(r'ref\((.+)\)', torinfo['movement_definition']).groups()[0] if 'movement_definition' in torinfo.keys() else None
                 
         # read frequencies
@@ -250,7 +250,7 @@ def gather_information(cutfilepath: dict, tordict: dict = {}) -> dict:
         infodict = {
             'file_name': file_name,
             'class_name': 'coupling_system',
-            'file_form': file_form,
+            'file_format': file_format,
             'receiver_sources': receiver_sources,
             'amplitude_only': amplitude_only,
             'movement_definition': movement_definition,
@@ -340,7 +340,7 @@ def cut2dict_cuts(cutfilepath: str, nrfreqs: int, nrsteps_per_movement: list):
         #   receiver_sources : sequence(ref(rectangular_horn_01),ref(rectangular_horn)),
         #   movement_definition : ref(rectangular_horn.cpl_01_movement_definition_01),
         #   list             : off,
-        #   file_form        : cuts,
+        #   file_format        : cuts,
         #   comment          : ""
         # )
 
@@ -391,7 +391,7 @@ def cut2dict_cuts(cutfilepath: str, nrfreqs: int, nrsteps_per_movement: list):
         #   receiver_sources : sequence(ref(rectangular_horn_01),ref(rectangular_horn)),
         #   movement_definition : ref(rectangular_horn.cpl_01_movement_definition_01),
         #   list             : off,
-        #   file_form        : cuts,
+        #   file_format        : cuts,
         #   comment          : ""
         # )
         
@@ -514,7 +514,7 @@ def cut2dict_cuts(cutfilepath: str, nrfreqs: int, nrsteps_per_movement: list):
         # receiver_sources : sequence(ref(rectangular_horn_01),ref(rectangular_horn)),
         # movement_definition : ref(rectangular_horn.cpl_01_movement_definition_01),
         # list             : off,
-        # file_form        : cuts,
+        # file_format        : cuts,
         # comment          : ""
         # )
 
@@ -667,7 +667,7 @@ def dict2xarray(cutdict: dict) -> xr.DataArray:
     coords_movements = [None]*len(cutdict['movdicts'])
     for ii,movdict in enumerate(cutdict['movdicts']):
         vals = np.linspace(movdict['start'], movdict['end'], movdict['number'])
-        coords_movements[ii] = ('m1', vals, 
+        coords_movements[ii] = (f'm{ii+1}', vals, 
                                 {'long_name': "%s (%s)" % (movdict['movement'],movdict['axis']), 
                                  'name': "%s (%s)" % (movdict['movement'],movdict['axis']), 
                                  'units': movdict['length_unit']})
@@ -680,7 +680,7 @@ def dict2xarray(cutdict: dict) -> xr.DataArray:
         attrs = {
             'file_name': cutdict['file_name'],
             'class_name': cutdict['class_name'],
-            'file_form': cutdict['file_form'],
+            'file_format': cutdict['file_format'],
             'receiver_sources': cutdict['receiver_sources'],
             'amplitude_only': cutdict['amplitude_only'],
             'movement_definition': cutdict['movement_definition'],
