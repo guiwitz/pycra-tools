@@ -1,3 +1,4 @@
+import numpy as np
 import xarray as xr
 from pathlib import Path
 
@@ -6,7 +7,7 @@ from . import gridfile_grdutils
 from . import gridfile_h5utils
 
 def readgrid(gridfilepath: str, torfilepath: str = '', tordict: dict = {}, 
-             userinfo: dict = {}) -> xr.DataArray:
+             userdict: dict = {}) -> xr.DataArray:
     """
     
     To be done
@@ -129,10 +130,22 @@ def readgrid(gridfilepath: str, torfilepath: str = '', tordict: dict = {},
     # raise
     
     """
-    
+        
+    # check file extension
     gridfilepath = Path(gridfilepath) # convert string to pathlib object
+    if gridfilepath.suffix not in ['.grd', '.h5']:
+        raise Exception('Gridfile extension must .grd or .h5 (given file: %s)' % gridfilepath)
     
     if gridfilepath.suffix == '.grd':
+        
+        # initialize dictionary with information
+        userinfo = {
+            'class_name': None,
+            'field_type': None,
+            'freqs_Hz': np.asarray([]),
+            'field_region_distance_m': np.nan,
+            'coordinate_system_name': ''
+        }
         
         # load torfile to dictionary
         if torfilepath:
@@ -140,8 +153,21 @@ def readgrid(gridfilepath: str, torfilepath: str = '', tordict: dict = {},
         elif tordict:
             pass
         elif userinfo:
-            pass
+            
+            # update userinfo with userdict
+            userinfo.update(userdict)
+                        
+            # farfield: cut of class 'spherical' is the only option
+            _, _, _, _, _, ncomp, _ = gridfile_grdutils.read_gridinfo(gridfilepath)
+            if ncomp == 2:
+                userinfo.update({'class_name': 'spherical'})
+                userinfo.update({'field_region_distance_m': np.inf})
+            
+            # verify consistency of the dictionary
+            gridfile_grdutils.check_userinfo(userinfo)
+            
         else:
+            
             print('Provide either torfilepath, tordict or userinfodict!')
         
         # read gridfile
@@ -159,7 +185,7 @@ def readgrid(gridfilepath: str, torfilepath: str = '', tordict: dict = {},
         # store data as Xarray
         da = dict2xarray(gridinfodict)
         
-    elif gridfilepath.suffix == '.h5':
+    else:
         
         # load torfile to dictionary
         if torfilepath:
@@ -185,10 +211,6 @@ def readgrid(gridfilepath: str, torfilepath: str = '', tordict: dict = {},
         
         # store data as Xarray
         da = dict2xarray(gridinfodict)
-        
-    else:
-        
-        raise Exception('Gridfile extension must .grd or .h5 (given file: %s)' % gridfilepath)
     
     return da
 

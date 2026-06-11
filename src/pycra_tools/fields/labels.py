@@ -67,7 +67,7 @@ cut_type_circular = {'name': 'circular',
 cut_type = {
 
     # Ticra-Tools-23.0.0-Manual p. 2090, 3248
-    'spherical_cut' : {
+    'spherical' : {
         1: {'name': 'polar', 
             'coords': ('polar angle', 'zenith angle'), 
             'coords_math': (r'\phi', r'\theta'),
@@ -78,12 +78,12 @@ cut_type = {
             'units': ('deg', 'deg')}},
 
     # Ticra-Tools-23.0.0-Manual p. 2090, 3249
-    'planar_cut': {
+    'planar': {
         1: cut_type_radial,
         2: cut_type_circular},
 
     # Ticra-Tools-23.0.0-Manual p. 2097, 3250
-    'cylindrical_cut': {
+    'cylindrical': {
         1: {'name': 'axial',      
             'coords': ('polar angle', 'z'), 
             'coords_math': (r'\phi', 'z'),
@@ -94,7 +94,7 @@ cut_type = {
             'units': ('m', 'deg')},
     
     # Ticra-Tools-23.0.0-Manual p. 2103, 3249
-    'surface_cut': {
+    'surface': {
         1: cut_type_radial,
         2: cut_type_circular}}
 }
@@ -104,10 +104,10 @@ cut_type = {
 # --------------------------------------------------------
 
 cut_polarisation = {
-    'spherical_cut': polarisation_type_spherical, # Manual 751, 1110
-    'planar_cut': polarisation_type_planar, # Manual 759, 1110
-    'surface_cut': polarisation_type_surface, # Manual 772, 1110
-    'cylindrical_cut': polarisation_type_cylindrical # Manual 766, 1111
+    'spherical': polarisation_type_spherical, # Manual 751, 1110
+    'planar': polarisation_type_planar, # Manual 759, 1110
+    'surface': polarisation_type_surface, # Manual 772, 1110
+    'cylindrical': polarisation_type_cylindrical # Manual 766, 1111
 }
 
 # ========================================================
@@ -126,7 +126,7 @@ grid_type_xy = {'name': 'xy',
 grid_type = {
 
     # Ticra-Tools-23.0.0-Manual p. 2111-2112, 3255
-    'spherical_grid': {
+    'spherical': {
         1: {'name': 'uv', 
             'coords': ('co-polar', 'cross-polar'), 
             'coords_math': ('u', 'v'),
@@ -157,7 +157,7 @@ grid_type = {
             'units': ('deg', 'deg')}},
 
     # Ticra-Tools-23.0.0-Manual p. 2130, 3256
-    'planar_grid': {
+    'planar': {
         2: {'name': 'rho_phi',     
             'coords': ('radius', 'polar angle'), 
             'coords_math': (r'\rho', r'\phi'),
@@ -165,11 +165,11 @@ grid_type = {
         3: grid_type_xy},
 
     # Ticra-Tools-23.0.0-Manual p. 2130, 3256
-    'surface_grid': { # p. 3256
+    'surface': { # p. 3256
         3: grid_type_xy},
 
     # Ticra-Tools-23.0.0-Manual p. 2130, 3257
-    'cylindrical_grid': {
+    'cylindrical': {
         3: {'name': 'phi_z', # p. 3257      
             'coords': ('azimut angle', 'z'), 
             'coords_math': (r'\phi', 'z'),
@@ -182,10 +182,10 @@ grid_type = {
 # --------------------------------------------------------
 
 grid_polarisation = {
-    'spherical_grid': polarisation_type_spherical, # Manual 781, 1114
-    'planar_grid': polarisation_type_planar, # Manual 797, 1116
-    'surface_grid': polarisation_type_surface, # Manual 801, 1116
-    'cylindrical_grid': polarisation_type_cylindrical # Manual 804, 1117
+    'spherical': polarisation_type_spherical, # Manual 781, 1114
+    'planar': polarisation_type_planar, # Manual 797, 1116
+    'surface': polarisation_type_surface, # Manual 801, 1116
+    'cylindrical': polarisation_type_cylindrical # Manual 804, 1117
 }
 
 # --------------------------------------------------------

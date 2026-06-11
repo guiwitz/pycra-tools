@@ -102,68 +102,68 @@ def extract_frequencies(header_blob, nset, gridfilepath):
     
     return freqs_Hz
 
-
-def grid2dict_grd(gridfilepath: Path):
-    """    
-    See GRASP-10.5.0-Manual.pdf p. 1113 for more information:
-    KTYPE (integer) - Specifies type of file format. KTYPE = 1 - standard format for 2D grid. For files used in GRASP this variable is always 1.
-    NSET - Number of field sets or beams.
-    ICOMP - Control parameter of field components.
-    NCOMP - Number of components.
-    IGRID - Control parameter of field grid type.
-
+def read_gridinfo(gridfilepath: Path):
     """
+    
+    Read information from the header.
+    Notice that this looks different for: 
+    - surface_grid vs. other grid-types
+    - type of frequency/wavelength definition
+    
+    Examples:
+    
+        VERSION: TICRA-EM-FIELD-V0.1
+        Field data in grid
+        SOURCE_FIELD_NAME: single_feed
+        SOURCE_FIELD_NAME: single_po
+        FREQUENCY_NAME: single_frequencies
+        FREQUENCIES [GHz]:
+            0.1040000000E+02  0.1100000000E+02  0.1160000000E+02
+        ++++
+
+        VERSION: TICRA-EM-FIELD-V0.1
+        Field data in grid
+        SOURCE_FIELD_NAME: strut_analysis_arbitrary_cross_01
+        WAVELENGTH_RANGE_NAME: wavelength_range
+        WAVELENGTHS [m]:
+            0.3000000000E-01
+        ++++
+
+        VERSION: TICRA-EM-FIELD-V0.1
+        Field data in grid
+        SOURCE_FIELD_NAME: rectangular_horn_tx
+        FREQUENCY_RANGE_NAME: frequency_range
+        FREQUENCIES [GHz]:
+            0.3500000000E+01  0.4375000000E+01  0.5250000000E+01  0.6125000000E+01
+            0.7000000000E+01POLARIZATION_COOR_SYS_NAME: rectangular_horn_tx_coor_sys
+        ++++
+
+        Field data in grid
+        Field from source single_feed
+        Field from source single_po
+        Field from source strut_analysis_arbitrary_cross
+        Field from source strut_analysis_arbitrary_cross_01
+        ++++
+    
+    Following ++++ there comes more information about type of file format etc.
+        # KTYPE = 1 - standard format for 2D grid. For files used in GRASP this variable is always 1.
+        # NSET - Number of field sets or beams.
+        # ICOMP - Control parameter of field components.
+        # NCOMP - Number of components.
+        # IGRID - Control parameter of field grid type.
+    
+    """
+    
+    headlinecount = 1
     
     with open(gridfilepath, 'r') as file_grid:
 
-        # --------------------------------------------------------
-        # Read information from the header.
-        # Notice that this looks different for: 
-        # - surface_grid vs. other grid-types
-        # - type of frequency/wavelength definition
-        #
-        # Examples:
-        #
-        #   VERSION: TICRA-EM-FIELD-V0.1
-        #   Field data in grid
-        #   SOURCE_FIELD_NAME: single_feed
-        #   SOURCE_FIELD_NAME: single_po
-        #   FREQUENCY_NAME: single_frequencies
-        #   FREQUENCIES [GHz]:
-        #       0.1040000000E+02  0.1100000000E+02  0.1160000000E+02
-        #   ++++
-        #
-        #   VERSION: TICRA-EM-FIELD-V0.1
-        #   Field data in grid
-        #   SOURCE_FIELD_NAME: strut_analysis_arbitrary_cross_01
-        #   WAVELENGTH_RANGE_NAME: wavelength_range
-        #   WAVELENGTHS [m]:
-        #       0.3000000000E-01
-        #   ++++
-        #
-        #   VERSION: TICRA-EM-FIELD-V0.1
-        #   Field data in grid
-        #   SOURCE_FIELD_NAME: rectangular_horn_tx
-        #   FREQUENCY_RANGE_NAME: frequency_range
-        #   FREQUENCIES [GHz]:
-        #       0.3500000000E+01  0.4375000000E+01  0.5250000000E+01  0.6125000000E+01
-        #       0.7000000000E+01POLARIZATION_COOR_SYS_NAME: rectangular_horn_tx_coor_sys
-        #   ++++
-        #
-        #   Field data in grid
-        #   Field from source single_feed
-        #   Field from source single_po
-        #   Field from source strut_analysis_arbitrary_cross
-        #   Field from source strut_analysis_arbitrary_cross_01
-        #   ++++
-        # --------------------------------------------------------
-
         # (1) parse relevant section (header ends with ++++). 
         header_lines = []
-        line = file_grid.readline()
-        while line[0:4] != "++++":
-            header_lines.append(line)
-            line = file_grid.readline()
+        nextline = file_grid.readline()
+        while nextline[0:4] != "++++":
+            header_lines.append(nextline)
+            nextline = file_grid.readline(); headlinecount +=1
         header_blob = "".join(header_lines) # merge lines to one string
         
         # (2) Store information in different format: 'headerinfo' being a list of tuples. Could look as follows:
@@ -180,14 +180,31 @@ def grid2dict_grd(gridfilepath: Path):
         # vals = [info[1].strip() for info in headerinfo]
         
         # (3) Following ++++ comes more information about type of file format etc.
-        # KTYPE = 1 - standard format for 2D grid. For files used in GRASP this variable is always 1.
-        # NSET - Number of field sets or beams.
-        # ICOMP - Control parameter of field components.
-        # NCOMP - Number of components.
-        # IGRID - Control parameter of field grid type.
-        ktype = int(file_grid.readline().strip())
-        nset, icomp, ncomp, igrid = [int(s) for s in file_grid.readline().split()]
+        ktype = int(file_grid.readline().strip()); headlinecount +=1
+        nset, icomp, ncomp, igrid = [int(s) for s in file_grid.readline().split()]; headlinecount +=1
         assert ktype == 1
+        
+    return headlinecount, header_blob, ktype, nset, icomp, ncomp, igrid
+
+def grid2dict_grd(gridfilepath: Path):
+    """    
+    See GRASP-10.5.0-Manual.pdf p. 1113 for more information:
+    KTYPE (integer) - Specifies type of file format. KTYPE = 1 - standard format for 2D grid. For files used in GRASP this variable is always 1.
+    NSET - Number of field sets or beams.
+    ICOMP - Control parameter of field components.
+    NCOMP - Number of components.
+    IGRID - Control parameter of field grid type.
+
+    """
+    
+    # read header information
+    headlinecount, header_blob, ktype, nset, icomp, ncomp, igrid = read_gridinfo(gridfilepath)
+    
+    with open(gridfilepath, 'r') as file_grid:
+
+        # skip the lines already read
+        for _ in range(headlinecount):
+            file_grid.readline()
         
         # (4) extract frequency information if available. Take frequencies from first appearance.     
         freqs_Hz = extract_frequencies(header_blob, nset, gridfilepath)
@@ -297,6 +314,42 @@ def grid2dict_grd(gridfilepath: Path):
     
     return griddict
 
+def check_userinfo(userinfo: dict = {}):
+    
+    # TICRA TOOLS 23.1.0 p. 2109...
+    class_name_options = labels.grid_type.keys() # ['spherical', 'planar', 'cylindrical', 'surface']
+    field_type_options = {
+        'spherical': ['e_field', 'h_field'],
+        'planar': ['e_field', 'h_field'],
+        'cylindrical': ['e_field', 'h_field'],
+        'surface': ['incident_e_field', 'incident_h_field', 'reflected_e_field', 'reflected_h_field', 'currents']}
+
+    # check user-defined class_name (e.g. 'surface_cut', ...)
+    if userinfo['class_name'] is None:
+        print("Please provide 'class_name'. Options: %s" % class_name_options)
+        raise
+    else: 
+        class_name = userinfo['class_name']
+        if class_name not in class_name_options:
+            print("class_name '%s' not in options: %s" % (class_name, class_name_options))
+            raise
+        
+    # check user-defined field_type (e.g. 'reflected_h_field', ...)
+    # decide whether to use defaults
+    if userinfo['field_type'] is None:
+        print(f'User did not specify "field_type" => Assume default for class "{class_name}": {field_type_options[class_name][0]}')
+        userinfo['field_type'] = field_type_options[class_name][0]
+    # if userinfo['field_type'] is None:
+    #     print("Please provide 'field_type'. Options: %s" % (field_type_options[class_name]))
+    #     raise
+    else: 
+        field_type = userinfo['field_type']
+        if field_type not in field_type_options[class_name]:
+            print('field_type "%s" not in options: %s' % (field_type, field_type_options[class_name]))
+            raise
+    
+    return
+
 def gather_information(griddict: dict, tordict: dict = {}, userinfo: dict = {}) -> dict:
     """
     Combine data from gridfile + torfile/userinfo: dictionary with labels etc.
@@ -309,11 +362,12 @@ def gather_information(griddict: dict, tordict: dict = {}, userinfo: dict = {}) 
         gridname = Path(griddict['file_name']).stem
         torinfo = tordict[gridname]
         
-        # get class_name ('spherical_grid', ...)
-        class_name = torinfo['class_name']     
+        # get class_name ('spherical', ...)
+        class_name = torinfo['class_name'] # spherical_grid, planar_grid, surface_grid and cylindrical_grid
+        class_name = class_name.split('_')[0] # spherical, planar, surface and cylindrical     
         
         # field ('e_field', 'h_field', 'reflected_e_field', 'currents', ...)
-        if class_name == 'surface_grid':
+        if class_name == 'surface':
             field_type = tordict[gridname]['field_type'] if 'field_type' in tordict[gridname].keys() else 'indicent_e_field'
         else:
             field_type = tordict[gridname]['e_h'] if 'e_h' in tordict[gridname].keys() else 'e_field'
@@ -322,7 +376,7 @@ def gather_information(griddict: dict, tordict: dict = {}, userinfo: dict = {}) 
         coordinate_system_name = torfile.get_coordinate_system_name(torinfo)
         
         # near- vs. farfield
-        if class_name in ['planar_grid','surface_grid','cylindrical_grid']:
+        if class_name in ['planar','surface','cylindrical']:
             field_region = 'near'
         elif 'near_far' in tordict[gridname].keys():
             field_region = tordict[gridname]['near_far'].split(',')[0]
@@ -330,7 +384,7 @@ def gather_information(griddict: dict, tordict: dict = {}, userinfo: dict = {}) 
             field_region = 'far'
             
         # nearfield distance
-        if class_name == 'surface_grid':
+        if class_name == 'surface':
             field_region_distance_m = 0.
         elif field_region == 'far':
             field_region_distance_m = np.inf
@@ -365,37 +419,11 @@ def gather_information(griddict: dict, tordict: dict = {}, userinfo: dict = {}) 
             raise
             
     elif userinfo:
-                
-        # TICRA TOOLS 23.1.0 p. 2109...
-        class_name_options = labels.grid_type.keys() # ['spherical_grid', 'planar_grid', 'cylindrical_grid', 'surface_grid']
-        field_type_options = {
-            'spherical_grid': ['e_field', 'h_field'],
-            'planar_grid': ['e_field', 'h_field'],
-            'cylindrical_grid': ['e_field', 'h_field'],
-            'surface_grid': ['incident_e_field', 'incident_h_field', 'reflected_e_field', 'reflected_h_field', 'currents']}
-
-        # check user-defined class_name (e.g. 'surface_grid', ...)
-        if 'class_name' not in userinfo.keys():
-            print('Please provide "class_name":')
-            print('Options: %s' % class_name_options)
-            raise
-        else: 
-            class_name = userinfo['class_name']
-            if class_name not in class_name_options:
-                print('class_name "%s" not in options: %s' % (class_name, class_name_options))
-                raise
         
-        # check user-defined field_type (e.g. 'reflected_h_field', ...)
-        if 'field_type' not in userinfo.keys():
-            print('Please provide "field_type":')
-            print('Options for %s: %s' % (field_type, field_type_options[class_name]))
-            raise
-        else: 
-            field_type = userinfo['field_type']
-            if field_type not in field_type_options[class_name]:
-                print('field_type "%s" not in options: %s' % (field_type, field_type_options[class_name]))
-                raise
-           
+        # basic nomenclature
+        class_name = userinfo['class_name']
+        field_type = userinfo['field_type']
+                           
         # optional: coordinate system name
         coordinate_system_name = userinfo['coordinate_system_name'] if 'coordinate_system_name' in userinfo.keys() else '???'
         if not (type(coordinate_system_name) is str):
@@ -415,7 +443,7 @@ def gather_information(griddict: dict, tordict: dict = {}, userinfo: dict = {}) 
             pass
             
         # frequencies
-        if 'freqs_Hz' in userinfo.keys():
+        if userinfo['freqs_Hz'].size>0:
             freqs_Hz_auxiliary = userinfo['freqs_Hz']
             if len(freqs_Hz_auxiliary) != len(griddict['freqs_Hz']):
                 print('Error with file: %s' % griddict['file_name'])
@@ -446,7 +474,7 @@ def gather_information(griddict: dict, tordict: dict = {}, userinfo: dict = {}) 
     # replace fieldnames
     # surface_grid: e.g. E_{i,\,co} --> H_{r,\,co}
     # all other grids: e.g. E_{co} --> H_{co}
-    if class_name == 'surface_grid': 
+    if class_name == 'surface': 
         if field_type == 'incident_h_field':
             field_components_mathnames = [el.replace(r'E', r'H') for el in field_components_mathnames]
         elif field_type == 'reflected_e_field':

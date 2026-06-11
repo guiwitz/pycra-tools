@@ -6,8 +6,10 @@ from pathlib import Path
 from . import labels
 from .. import torfile
 
-def readcut(cutfilepath: str, torfilepath: str = '', tordict: dict = {}, 
-            userinfo: dict = {}) -> xr.DataArray:
+def readcut(cutfilepath: str, 
+            torfilepath: str = '', 
+            tordict: dict = {}, 
+            userdict: dict = {}) -> xr.DataArray:
     """
     
     Example
@@ -35,7 +37,7 @@ def readcut(cutfilepath: str, torfilepath: str = '', tordict: dict = {},
     
     # If torfile is not available: create dictionary with relevant information
     userinfo = {
-        'class_name': 'spherical_cut',                  # (required)
+        'class_name': 'spherical',                  # (required)
         'field_type': 'h_field',                        # (required)
         'coordinate_system_name': 'single_cut_coor',    # (optional)
         'field_region_distance_m': 1,                   # (optional)
@@ -56,7 +58,7 @@ def readcut(cutfilepath: str, torfilepath: str = '', tordict: dict = {},
     --> torfilepath = './offset_reflector/Job_01/Job_01.tor' 
     --> tordict = torfile.tor2dict(torfilepath)
     --> userinfo = {
-            'class_name': 'spherical_cut',                  # (required)
+            'class_name': 'spherical',                  # (required)
             'field_type': 'h_field',                        # (required)
             'coordinate_system_name': 'single_cut_coor',    # (optional)
             'field_region_distance_m': 1,                   # (optional)
@@ -65,10 +67,10 @@ def readcut(cutfilepath: str, torfilepath: str = '', tordict: dict = {},
         
     Implemented options for required userinfo-input. 
     class_name: [field_type options]
-    --> 'spherical_cut': ['e_field', 'h_field'],
-    --> 'planar_cut': ['e_field', 'h_field'],
-    --> 'cylindrical_cut': ['e_field', 'h_field'],
-    --> 'surface_cut': ['incident_e_field', 'incident_h_field', 'reflected_e_field', 'reflected_h_field', 'currents']
+    --> 'spherical': ['e_field', 'h_field'],
+    --> 'planar': ['e_field', 'h_field'],
+    --> 'cylindrical': ['e_field', 'h_field'],
+    --> 'surface': ['incident_e_field', 'incident_h_field', 'reflected_e_field', 'reflected_h_field', 'currents']
     
     
     Introduction
@@ -126,7 +128,7 @@ def readcut(cutfilepath: str, torfilepath: str = '', tordict: dict = {},
     --------------------------------------------
     
     Torfile/user
-    - class_name : spherical_cut, surface_cut, ...
+    - class_name : spherical, surface, ...
     - field_type : 'e_field', 'h_field', 'incident_e_field', 'incident_h_field', 'reflected_e_field', 'reflected_h_field', 'currents'
     
     Retrieved information
@@ -140,16 +142,16 @@ def readcut(cutfilepath: str, torfilepath: str = '', tordict: dict = {},
     - file_format
     - comment
 
-    spherical_cut
+    spherical
     - theta_range
     - phi_range
     - polarisation_modification
 
-    planar_cut
+    planar
     - rho_range
     - phi_range
 
-    cylindrical_cut
+    cylindrical
     - z_range
     - phi_range
 
@@ -162,22 +164,50 @@ def readcut(cutfilepath: str, torfilepath: str = '', tordict: dict = {},
 
     """
     
+    # initialize dictionary with information
+    userinfo = {
+        'class_name': None,
+        'field_type': None,
+        'freqs_Hz': np.asarray([]),
+        'field_region_distance_m': np.nan,
+        'coordinate_system_name': ''
+    }
+        
+    # check file extension
     cutfilepath = Path(cutfilepath)
     if cutfilepath.suffix != '.cut':
         raise Exception('Cutfile extension must .cut (given file: %s)' % cutfilepath)
-
-    # read cutfile to dictionary
-    cutdict = cut2dict(cutfilepath)
-
-    # load torfile to dictionary
-    if torfilepath:
+    
+    # ----------------------
+    # check inputs
+    # ----------------------
+    
+    if torfilepath: # load torfile to dictionary
         tordict = torfile.tor2dict(torfilepath)
     elif tordict:
         pass
     elif userinfo:
-        pass
+        
+        # update userinfo with userdict
+        userinfo.update(userdict)
+        
+        # farfield: cut of class 'spherical' is the only option
+        _, _, _, _, _, _, ncomp = read_cutinfo(cutfilepath)
+        if ncomp == 2:
+            userinfo.update({'class_name': 'spherical'})
+            userinfo.update({'field_region_distance_m': np.inf})
+            
+        # verify consistency of the dictionary
+        check_userinfo(userinfo)
     else:
-        print('Provide either torfilepath, tordict or userinfo!')
+        print('Provide either torfilepath, tordict, or userdict!')
+        
+    # ----------------------
+    # read and combine data
+    # ----------------------
+    
+    # read cutfile to dictionary
+    cutdict = cut2dict(cutfilepath)   
     
     # combine cutfile and torfile/userinfo
     infodict = gather_information(cutdict, tordict, userinfo)
@@ -193,26 +223,73 @@ def readcut(cutfilepath: str, torfilepath: str = '', tordict: dict = {},
 
     return da
 
+def check_userinfo(userinfo):
+    
+    # TICRA TOOLS 23.1.0 p. 2079...
+    class_name_options = labels.cut_type.keys() # ['spherical', 'planar', 'cylindrical', 'surface']
+    field_type_options = {
+        'spherical': ['e_field', 'h_field'],
+        'planar': ['e_field', 'h_field'],
+        'cylindrical': ['e_field', 'h_field'],
+        'surface': ['incident_e_field', 'incident_h_field', 'reflected_e_field', 'reflected_h_field', 'currents']}
+    
+    # check user-defined class_name (e.g. 'surface_cut', ...)
+    if userinfo['class_name'] is None:
+        print("Please provide 'class_name'. Options: %s" % class_name_options)
+        raise
+    else: 
+        class_name = userinfo['class_name']
+        if class_name not in class_name_options:
+            print("class_name '%s' not in options: %s" % (class_name, class_name_options))
+            raise
+        
+    # check user-defined field_type (e.g. 'reflected_h_field', ...)
+    # decide whether to use defaults
+    if userinfo['field_type'] is None:
+        print(f'User did not specify "field_type" => Assume default for class "{class_name}": {field_type_options[class_name][0]}')
+        userinfo['field_type'] = field_type_options[class_name][0]
+    # if userinfo['field_type'] is None:
+    #     print("Please provide 'field_type'. Options: %s" % (field_type_options[class_name]))
+    #     raise
+    else: 
+        field_type = userinfo['field_type']
+        if field_type not in field_type_options[class_name]:
+            print('field_type "%s" not in options: %s' % (field_type, field_type_options[class_name]))
+            raise
+        
+    return
+
+def read_cutinfo(cutfilepath: Path):
+    """
+    Read header information of first cut
+    """
+    
+    with open(cutfilepath, 'r') as file_cut:
+        file_cut.readline()
+        nextline = file_cut.readline()
+        v_ini, v_inc, v_num, c, icomp, icut, ncomp = [float(s) if '.' in s else int(s) for s in nextline.split()]
+    
+    return v_ini, v_inc, v_num, c, icomp, icut, ncomp
+
 def cut2dict(cutfilepath: Path):
     """
     Read cutfile-data into dictionary. Comments:
     - Every cut is has the same number of data points.
     - Read-off common information from first cut's header.
     """
+    
+    v_ini, v_inc, v_num, _, icomp, icut, ncomp = read_cutinfo(cutfilepath)
 
     with open(cutfilepath, 'r') as file_cut:
         lines = file_cut.readlines()
-
-    line = lines[1].split()
-    v_ini, v_inc, v_num, _, icomp, icut, ncomp = [float(s) if '.' in s else int(s) for s in line]
     
     # Read header information of the different cuts: cut orientation
     no_of_cuts = len(lines) // (v_num + 2)
     cut_coordinates = [0.] * no_of_cuts
     for cut_index in range(no_of_cuts):
         cut_start = cut_index * (v_num + 2)
-        line = lines[cut_start + 1].split()
-        cut_coordinates[cut_index] = float(line[3])
+        nextline = lines[cut_start + 1].split()
+        cut_coordinates[cut_index] = float(nextline[3])
 
     # define coordinates
     fix_coordinates = sorted(list(set(cut_coordinates)))
@@ -228,9 +305,9 @@ def cut2dict(cutfilepath: Path):
         for fix_index in range(nrfix):
             fix_start = (frequency_index*nrfix + fix_index) * (v_num + 2)
             for ii in range(nrvarying):
-                line = lines[fix_start + ii + 2].split() # +2 means that first two lines are information
-                for jj in range(0, len(line), 2):
-                    data[ii, fix_index, jj // 2, frequency_index] = complex(float(line[jj]), float(line[jj + 1]))
+                nextline = lines[fix_start + ii + 2].split() # +2 means that first two lines are information
+                for jj in range(0, len(nextline), 2):
+                    data[ii, fix_index, jj // 2, frequency_index] = complex(float(nextline[jj]), float(nextline[jj + 1]))
 
     cutdict = {
         'file_name': str(cutfilepath.resolve()),
@@ -260,18 +337,19 @@ def gather_information(cutdict: dict, tordict: dict = {}, userinfo: dict = {}) -
 
         cutname = Path(cutdict['file_name']).stem
         
-        # get class_name ('spherical_cut', ...)
+        # get class_name ('spherical', ...)
         class_name = tordict[cutname]['class_name'] # spherical_cut, planar_cut, surface_cut and cylindrical_cut
+        class_name = class_name.split('_')[0] # spherical, planar, surface and cylindrical
         
         # check that the identified class_name is implemented (to avoid wheird errors)
-        known_class_names = ['spherical_cut', 'planar_cut', 'surface_cut', 'cylindrical_cut']
+        known_class_names = ['spherical', 'planar', 'surface', 'cylindrical']
         if not class_name in known_class_names:
             print('No such class_name: %s' % class_name)
             print('Implemented options include: %s' % known_class_names)
             raise
         
         # field ('e_field', 'h_field', 'reflected_e_field', 'currents', ...)
-        if class_name == 'surface_cut':
+        if class_name == 'surface':
             field_type = tordict[cutname]['field_type'] if 'field_type' in tordict[cutname].keys() else 'indicent_e_field'
         else:
             field_type = tordict[cutname]['e_h'] if 'e_h' in tordict[cutname].keys() else 'e_field'
@@ -280,15 +358,15 @@ def gather_information(cutdict: dict, tordict: dict = {}, userinfo: dict = {}) -
         coordinate_system_name = torfile.get_coordinate_system_name(tordict[cutname]) # e.g. single_cut_coor
             
         # near- vs. farfield
-        if class_name in ['planar_cut','surface_cut','cylindrical_cut']:
+        if class_name in ['planar','surface','cylindrical']:
             field_region = 'near'
-        elif 'near_far' in tordict[cutname].keys(): # spherical_cut
+        elif 'near_far' in tordict[cutname].keys(): # spherical
             field_region = tordict[cutname]['near_far'].split(',')[0]
         else: 
             field_region = 'far'
                     
         # nearfield distance
-        if class_name == 'surface_cut':
+        if class_name == 'surface':
             field_region_distance_m = 0.
         elif field_region == 'far':
             field_region_distance_m = np.inf
@@ -313,35 +391,9 @@ def gather_information(cutdict: dict, tordict: dict = {}, userinfo: dict = {}) -
                         
     elif userinfo:
         
-        # TICRA TOOLS 23.1.0 p. 2079...
-        class_name_options = labels.cut_type.keys() # ['spherical_cut', 'planar_cut', 'cylindrical_cut', 'surface_cut']
-        field_type_options = {
-            'spherical_cut': ['e_field', 'h_field'],
-            'planar_cut': ['e_field', 'h_field'],
-            'cylindrical_cut': ['e_field', 'h_field'],
-            'surface_cut': ['incident_e_field', 'incident_h_field', 'reflected_e_field', 'reflected_h_field', 'currents']}
-        
-        # check user-defined class_name (e.g. 'surface_cut', ...)
-        if 'class_name' not in userinfo.keys():
-            print('Please provide "class_name":')
-            print('Options: %s' % class_name_options)
-            raise
-        else: 
-            class_name = userinfo['class_name']
-            if class_name not in class_name_options:
-                print('class_name "%s" not in options: %s' % (class_name, class_name_options))
-                raise
-            
-        # check user-defined field_type (e.g. 'reflected_h_field', ...)
-        if 'field_type' not in userinfo.keys():
-            print('Please provide "field_type":')
-            print('Options for %s: %s' % (field_type, field_type_options[class_name]))
-            raise
-        else: 
-            field_type = userinfo['field_type']
-            if field_type not in field_type_options[class_name]:
-                print('field_type "%s" not in options: %s' % (field_type, field_type_options[class_name]))
-                raise
+        # basic nomenclature
+        class_name = userinfo['class_name']
+        field_type = userinfo['field_type']
         
         # coordinate system name
         coordinate_system_name = userinfo['coordinate_system_name'] if 'coordinate_system_name' in userinfo.keys() else '???'
@@ -353,17 +405,16 @@ def gather_information(cutdict: dict, tordict: dict = {}, userinfo: dict = {}) -
         if not ((type(field_region_distance_m) is int) | (type(field_region_distance_m) is float)):
             print('"nearfield_distance_m" must be numeric!')
         field_region = 'near' if cutdict['ncomp'] > 2 else 'far'
-        if class_name == 'surface_cut':
+        if class_name == 'surface':
             field_region_distance_m = 0.
         elif (field_region == 'far') & (field_region_distance_m != np.inf):
             print('far-field --> reset field_region_distance_m to infinity') 
             field_region_distance_m = np.inf
         else:
             pass
-            
         
         # frequencies
-        freqs_Hz = userinfo['freqs_Hz'] if 'freqs_Hz' in userinfo.keys() else [np.nan]*np.shape(cutdict['data'])[3]
+        freqs_Hz = userinfo['freqs_Hz'] if userinfo['freqs_Hz'].size>0 else [np.nan]*np.shape(cutdict['data'])[3]
         if len(freqs_Hz) != np.shape(cutdict['data'])[3]:
             print('Indicated nr. of frequencies (%d) in contrast with cut-file (%d)' % (len(freqs_Hz), np.shape(cutdict['data'])[3]))
             raise
@@ -380,9 +431,9 @@ def gather_information(cutdict: dict, tordict: dict = {}, userinfo: dict = {}) -
     field_components_mathnames = field_components_mathnames[0:cutdict['ncomp']] # e.g. ['E_{co}', 'E_{cx}']
     
     # replace fieldnames
-    # surface_cut: e.g. E_{i,\,co} --> H_{r,\,co}
+    # surface: e.g. E_{i,\,co} --> H_{r,\,co}
     # all other cuts: e.g. E_{co} --> H_{co}
-    if class_name == 'surface_cut': 
+    if class_name == 'surface': 
         if field_type == 'incident_h_field':
             field_components_mathnames = [el.replace(r'E', r'H') for el in field_components_mathnames]
         elif field_type == 'reflected_e_field':
@@ -404,16 +455,16 @@ def gather_information(cutdict: dict, tordict: dict = {}, userinfo: dict = {}) -
         
     # gather all the information
     inputinfodict = {
-        'class_name': class_name, # torfile/user (required): e.g. spherical_cut (surface_cut)
+        'class_name': class_name, # torfile/user (required): e.g. spherical (surface)
         'field_type': field_type, # torfile/user (required): e.g. e_field (incident_e_field)
         'coordinate_system_name': coordinate_system_name, # torfile/user: e.g. single_cut_coor (optional)
         'field_region_distance_m': field_region_distance_m, # torfile/user: e.g. 6 (optional)
         'freqs_Hz': freqs_Hz} # torfile/user (optional)
     outputinfodict = {
-        'coordinate_system': coordinate_system, # icut + class_name --> e.g. spherical_cut: polar, conical -->  {'name': 'polar', 'coords': ('phi', 'theta'), 'units': ('deg', 'deg'), 'tex': ('\\phi', '\\theta')}
-        'polarisation': polarisation, # icomp + class_name --> e.g. spherical_cut: linear, total power, ...
+        'coordinate_system': coordinate_system, # icut + class_name --> e.g. spherical: polar, conical -->  {'name': 'polar', 'coords': ('phi', 'theta'), 'units': ('deg', 'deg'), 'tex': ('\\phi', '\\theta')}
+        'polarisation': polarisation, # icomp + class_name --> e.g. spherical: linear, total power, ...
         'field_region': field_region, # ncomp / torfile --> near_field / far_field
-        'field_components_mathnames': field_components_mathnames, # ncomp + class_name + field_type --> e.g. spherical_cut: ['E_{co}', 'E_{cx}', 'E_r']
+        'field_components_mathnames': field_components_mathnames, # ncomp + class_name + field_type --> e.g. spherical: ['E_{co}', 'E_{cx}', 'E_r']
         'field_components_unitsystem': field_components_unitsystem, # icomp + class_name (polarisation & field_region) --> e.g. spherical
         'field_components_mathunits': field_components_mathunits} # icomp + class_name (polarisation & field_region)
     infodict = {**inputinfodict,**outputinfodict}
