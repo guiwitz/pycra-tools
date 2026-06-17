@@ -9,6 +9,7 @@ on:
         - master
     paths:
         - ebook/**
+  workflow_dispatch:
 env:
   BASE_URL: /pycra-tools
 
