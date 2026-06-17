@@ -9,6 +9,8 @@ on:
         - master
     paths:
         - ebook/**
+env:
+  BASE_URL: /pycra-tools
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -35,7 +37,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18.x
-      
+  
+      - name: Install image conversion tools
+        run: sudo apt-get install -y imagemagick webp
+
       - name: Install Jupyter Book (via myst)
         run: npm install -g jupyter-book
       - name: Build HTML Assets
